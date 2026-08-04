@@ -291,6 +291,24 @@ function formatFullDate(dt){
   return dt.getFullYear() + '/' + pad(dt.getMonth()+1) + '/' + pad(dt.getDate()) + ' - ' + WEEKDAYS[(dt.getDay()+6)%7+1];
 }
 
+// تحويل رقم الهاتف إلى صيغة واتساب الدولية
+function whatsappNumber(phone){
+  let n = String(phone || '').trim().replace(/[^\d+]/g, '').replace(/^\+/, '');
+  if(n.startsWith('00')) n = n.slice(2);
+  if(n.startsWith('0')) n = n.slice(1);
+  if(n.length === 10 && n.startsWith('7')) n = '964' + n;
+  return n;
+}
+
+// نص رسالة إشعار الدفع عبر واتساب
+function waPaymentMessage(name, month, year, iso, fee){
+  let text = 'مرحباً ' + name + '،\nتم تسجيل دفع اشتراكك عن شهر ' + displayMonth(month, year) + ' من سنة ' + year;
+  if(iso) text += '\nوذلك بتاريخ ' + isoDayLabel(iso);
+  if(fee > 0) text += '\nالمبلغ: ' + fee + ' دينار';
+  text += '\nشكراً لكم';
+  return text;
+}
+
 // اسم الشهر الهجري المقابل لمنتصف الشهر الميلادي
 function hijriMonthName(year, gregMonth){
   try {
@@ -489,6 +507,10 @@ function toggleMonth(subId, year, month){
     state.payments[subId] = state.payments[subId] || {};
     state.payments[subId][year] = state.payments[subId][year] || {};
     state.payments[subId][year][month] = { paid: true, date: iso };
+    const ph = whatsappNumber(s.phone);
+    if(ph && confirm('تم تسجيل الدفع.\nهل تريد إرسال إشعار واتساب إلى ' + s.name + ' يخبره بأن الدفع تم بتاريخ اليوم؟')){
+      window.open('https://wa.me/' + ph + '?text=' + encodeURIComponent(waPaymentMessage(s.name, month, year, iso, s.monthlyFee)), '_blank');
+    }
   } else {
     if(!confirm('هل تريد إلغاء تسجيل الدفع لشهر ' + displayMonth(month, year) + '؟')) return;
     state.payments[subId][year][month] = { paid: false, date: null };
