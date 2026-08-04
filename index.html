@@ -187,7 +187,11 @@
     opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 30; max-width: 90%;
     text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,0.3);
   }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  #toast .wa-btn {
+    display: inline-block; margin: 10px 4px 2px; background: #25D366; color: #fff; border: none;
+    border-radius: 8px; padding: 8px 18px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
 
   @media (min-width: 600px) {
     .grid { grid-template-columns: repeat(4, 1fr); }
@@ -508,8 +512,10 @@ function toggleMonth(subId, year, month){
     state.payments[subId][year] = state.payments[subId][year] || {};
     state.payments[subId][year][month] = { paid: true, date: iso };
     const ph = whatsappNumber(s.phone);
-    if(ph && confirm('تم تسجيل الدفع.\nهل تريد إرسال إشعار واتساب إلى ' + s.name + ' يخبره بأن الدفع تم بتاريخ اليوم؟')){
-      window.open('https://wa.me/' + ph + '?text=' + encodeURIComponent(waPaymentMessage(s.name, month, year, iso, s.monthlyFee)), '_blank');
+    if(ph){
+      waToast(s.name, 'https://wa.me/' + ph + '?text=' + encodeURIComponent(waPaymentMessage(s.name, month, year, iso, s.monthlyFee)));
+    } else {
+      toast('تم تسجيل الدفع');
     }
   } else {
     if(!confirm('هل تريد إلغاء تسجيل الدفع لشهر ' + displayMonth(month, year) + '؟')) return;
@@ -665,12 +671,22 @@ function onFileSelected(input){
 
 // ============ تنبيه ============
 let toastTimer;
-function toast(msg){
+let pendingWa = null;
+function toast(msg, extraHtml){
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  t.innerHTML = extraHtml ? '<div>' + msg + '</div>' + extraHtml : msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), extraHtml ? 20000 : 2600);
+}
+function waToast(name, url){
+  pendingWa = url;
+  toast('تم تسجيل الدفع بنجاح', '<button class="wa-btn" onclick="sendWa()">إرسال إشعار واتساب إلى ' + h(name) + '</button>');
+}
+function sendWa(){
+  if(pendingWa) window.open(pendingWa, '_blank');
+  clearTimeout(toastTimer);
+  document.getElementById('toast').classList.remove('show');
 }
 
 // ============ تشغيل ============
