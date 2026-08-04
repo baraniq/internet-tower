@@ -131,6 +131,7 @@
     box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; gap: 3px;
   }
   .month-cell .m-name { font-weight: 700; font-size: 13px; }
+  .month-cell .m-hijri { font-size: 10.5px; color: var(--muted); }
   .month-cell .m-icon { font-size: 22px; line-height: 1; }
   .month-cell .m-status { font-size: 11px; font-weight: 700; }
   .month-cell .m-fee { font-size: 10.5px; color: var(--muted); }
@@ -175,6 +176,10 @@
   .btn-primary { background: var(--primary); color: #fff; }
   .btn-primary:hover { background: var(--primary-dark); }
   .btn-ghost { background: #EEF1F1; color: var(--text); }
+
+  .radio-group { display: flex; flex-direction: column; gap: 10px; padding: 6px 2px; }
+  .radio { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .radio input { width: 18px; height: 18px; }
 
   #toast {
     position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
@@ -225,6 +230,24 @@
 <input type="file" id="fileInput" accept=".csv,text/csv" style="display:none" onchange="onFileSelected(this)">
 <div id="toast"></div>
 
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>إعدادات العرض</h2>
+    <div class="field">
+      <label>أسماء الأشهر في شبكة الدفع:</label>
+      <div class="radio-group">
+        <label class="radio"><input type="radio" name="monthSystem" value="both"> كلاهما (ميلادي + هجري)</label>
+        <label class="radio"><input type="radio" name="monthSystem" value="gregorian"> ميلادية فقط</label>
+        <label class="radio"><input type="radio" name="monthSystem" value="hijri"> هجرية فقط</label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeSettings()">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveSettings()">حفظ</button>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 
@@ -235,6 +258,7 @@ const HEADER = 'name,phone,notes,monthly_fee,year,month,paid,paid_date';
 const LS_SUBS = 'tower_subscribers';
 const LS_PAYS = 'tower_payments';
 const LS_NEXT = 'tower_next_id';
+const LS_SYS = 'tower_month_system';
 
 const state = {
   view: 'home',
@@ -242,7 +266,8 @@ const state = {
   payments: {},
   currentSubId: null,
   currentYear: new Date().getFullYear(),
-  search: ''
+  search: '',
+  monthSystem: 'both'
 };
 
 let nextId = 1;
@@ -264,18 +289,37 @@ function formatFullDate(dt){
   return dt.getFullYear() + '/' + pad(dt.getMonth()+1) + '/' + pad(dt.getDate()) + ' - ' + WEEKDAYS[(dt.getDay()+6)%7+1];
 }
 
+// اسم الشهر الهجري المقابل لمنتصف الشهر الميلادي
+function hijriMonthName(year, gregMonth){
+  try {
+    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { month: 'long' }).format(new Date(year, gregMonth-1, 15));
+  } catch(e){ return ''; }
+}
+
+// أسطر أسماء الشهر حسب إعداد العرض
+function monthNameLines(year, gregMonth){
+  const g = monthName(gregMonth);
+  const hd = hijriMonthName(year, gregMonth);
+  if(state.monthSystem === 'gregorian') return '<div class="m-name">' + g + '</div>';
+  if(state.monthSystem === 'hijri') return '<div class="m-name">' + (hd || g) + '</div>';
+  return '<div class="m-name">' + g + '</div>' + (hd ? '<div class="m-hijri">' + hd + '</div>' : '');
+}
+
 // ============ الحفظ والتحميل ============
 function save(){
   localStorage.setItem(LS_SUBS, JSON.stringify(state.subscribers));
   localStorage.setItem(LS_PAYS, JSON.stringify(state.payments));
   localStorage.setItem(LS_NEXT, String(nextId));
+  localStorage.setItem(LS_SYS, state.monthSystem);
 }
 function load(){
   try {
     state.subscribers = JSON.parse(localStorage.getItem(LS_SUBS)) || [];
     state.payments = JSON.parse(localStorage.getItem(LS_PAYS)) || {};
     nextId = parseInt(localStorage.getItem(LS_NEXT)) || (state.subscribers.reduce((m,s)=>Math.max(m,s.id||0),0)+1);
-  } catch(e){ state.subscribers = []; state.payments = {}; nextId = 1; }
+    state.monthSystem = localStorage.getItem(LS_SYS) || 'both';
+    if(['both','gregorian','hijri'].indexOf(state.monthSystem) < 0) state.monthSystem = 'both';
+  } catch(e){ state.subscribers = []; state.payments = {}; nextId = 1; state.monthSystem = 'both'; }
 }
 
 // ============ التنقل ============
@@ -296,6 +340,7 @@ function render(){
     header.innerHTML = `
       <h1>مشتركو برج الإنترنت</h1>
       <div class="head-actions">
+        <button title="الإعدادات" onclick="openSettings()">⚙</button>
         <button title="تصدير CSV" onclick="exportCsv()">⇪</button>
         <button title="استيراد CSV" onclick="document.getElementById('fileInput').click()">⇩</button>
       </div>`;
@@ -378,7 +423,7 @@ function renderDetail(s){
     const status = paid ? (isoDayLabel(p.date) || 'مدفوع') : 'غير مدفوع';
     cells += `
       <button class="month-cell ${paid?'paid':'unpaid'}" onclick="toggleMonth(${s.id},${y},${m})">
-        <div class="m-name">${monthName(m)}</div>
+        ${monthNameLines(y, m)}
         <div class="m-icon">${paid?'✓':'✗'}</div>
         <div class="m-status">${h(status)}</div>
         ${fee>0 ? `<div class="m-fee">${paid ? fee+' د' : ''}</div>` : ''}
@@ -452,6 +497,20 @@ function openForm(id){
   document.getElementById('formModal').style.display = 'flex';
 }
 function closeModal(){ document.getElementById('formModal').style.display = 'none'; }
+
+// ============ إعدادات العرض ============
+function openSettings(){
+  document.querySelectorAll('input[name="monthSystem"]').forEach(r=>{
+    r.checked = (r.value === state.monthSystem);
+  });
+  document.getElementById('settingsModal').style.display = 'flex';
+}
+function closeSettings(){ document.getElementById('settingsModal').style.display = 'none'; }
+function saveSettings(){
+  const sel = document.querySelector('input[name="monthSystem"]:checked');
+  if(sel) state.monthSystem = sel.value;
+  save(); closeSettings(); render();
+}
 
 function saveForm(){
   const idRaw = document.getElementById('formModal').dataset.id;
@@ -582,8 +641,10 @@ function toast(msg){
 }
 
 // ============ تشغيل ============
-document.getElementById('formModal').addEventListener('click', e=>{
-  if(e.target.id === 'formModal') closeModal();
+document.querySelectorAll('.modal-overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{
+    if(e.target === ov) ov.style.display = 'none';
+  });
 });
 load();
 render();
