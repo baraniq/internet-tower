@@ -237,8 +237,9 @@
       <label>أسماء الأشهر في شبكة الدفع:</label>
       <div class="radio-group">
         <label class="radio"><input type="radio" name="monthSystem" value="both"> كلاهما (ميلادي + هجري)</label>
-        <label class="radio"><input type="radio" name="monthSystem" value="gregorian"> ميلادية فقط</label>
-        <label class="radio"><input type="radio" name="monthSystem" value="hijri"> هجرية فقط</label>
+        <label class="radio"><input type="radio" name="monthSystem" value="gregorian"> ميلادية فقط (يناير، فبراير...)</label>
+        <label class="radio"><input type="radio" name="monthSystem" value="levant"> شامية (كانون الثاني، تموز، آب...)</label>
+        <label class="radio"><input type="radio" name="monthSystem" value="hijri"> هجرية فقط (محرم، صفر...)</label>
       </div>
     </div>
     <div class="modal-actions">
@@ -253,6 +254,7 @@
 
 // ============ بيانات عامة ============
 const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const MONTHS_LEVANT = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
 const WEEKDAYS = ['','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت','الأحد'];
 const HEADER = 'name,phone,notes,monthly_fee,year,month,paid,paid_date';
 const LS_SUBS = 'tower_subscribers';
@@ -296,12 +298,21 @@ function hijriMonthName(year, gregMonth){
   } catch(e){ return ''; }
 }
 
+// اسم الشهر الرئيسي حسب إعداد العرض
+function displayMonth(month, year){
+  if(state.monthSystem === 'hijri') return hijriMonthName(year, month) || monthName(month);
+  if(state.monthSystem === 'levant') return MONTHS_LEVANT[month-1];
+  return monthName(month);
+}
+
 // أسطر أسماء الشهر حسب إعداد العرض
 function monthNameLines(year, gregMonth){
   const g = monthName(gregMonth);
   const hd = hijriMonthName(year, gregMonth);
+  const lv = MONTHS_LEVANT[gregMonth-1];
   if(state.monthSystem === 'gregorian') return '<div class="m-name">' + g + '</div>';
   if(state.monthSystem === 'hijri') return '<div class="m-name">' + (hd || g) + '</div>';
+  if(state.monthSystem === 'levant') return '<div class="m-name">' + lv + '</div>';
   return '<div class="m-name">' + g + '</div>' + (hd ? '<div class="m-hijri">' + hd + '</div>' : '');
 }
 
@@ -318,7 +329,7 @@ function load(){
     state.payments = JSON.parse(localStorage.getItem(LS_PAYS)) || {};
     nextId = parseInt(localStorage.getItem(LS_NEXT)) || (state.subscribers.reduce((m,s)=>Math.max(m,s.id||0),0)+1);
     state.monthSystem = localStorage.getItem(LS_SYS) || 'both';
-    if(['both','gregorian','hijri'].indexOf(state.monthSystem) < 0) state.monthSystem = 'both';
+    if(['both','gregorian','hijri','levant'].indexOf(state.monthSystem) < 0) state.monthSystem = 'both';
   } catch(e){ state.subscribers = []; state.payments = {}; nextId = 1; state.monthSystem = 'both'; }
 }
 
@@ -394,7 +405,7 @@ function subItemHTML(s){
       <div class="avatar ${paid?'paid':'unpaid'}">${paid?'✓':'✗'}</div>
       <div class="sub-info">
         <div class="sub-name">${h(s.name)}</div>
-        <div class="sub-meta">${s.phone ? h(s.phone) : 'بدون رقم'} · ${monthName(m)} ${y}</div>
+        <div class="sub-meta">${s.phone ? h(s.phone) : 'بدون رقم'} · ${displayMonth(m, y)} ${y}</div>
       </div>
       <div class="sub-status ${paid?'paid':'unpaid'}">${paid?'مدفوع':'غير مدفوع'}</div>
     </div>`;
@@ -473,13 +484,13 @@ function toggleMonth(subId, year, month){
     const now = new Date();
     let msg = 'سيتم تسجيل "' + s.name + '" كمدفوع بتاريخ:\n' + formatFullDate(now);
     if(s.monthlyFee>0) msg += '\nالمبلغ: ' + s.monthlyFee + ' دينار';
-    if(!confirm('تأكيد دفع ' + monthName(month) + '\n\n' + msg)) return;
+    if(!confirm('تأكيد دفع ' + displayMonth(month, year) + '\n\n' + msg)) return;
     const iso = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate());
     state.payments[subId] = state.payments[subId] || {};
     state.payments[subId][year] = state.payments[subId][year] || {};
     state.payments[subId][year][month] = { paid: true, date: iso };
   } else {
-    if(!confirm('هل تريد إلغاء تسجيل الدفع لشهر ' + monthName(month) + '؟')) return;
+    if(!confirm('هل تريد إلغاء تسجيل الدفع لشهر ' + displayMonth(month, year) + '؟')) return;
     state.payments[subId][year][month] = { paid: false, date: null };
   }
   save(); render();
