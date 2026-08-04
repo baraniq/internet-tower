@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#00796B">
+<title>إدارة برج الإنترنت</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --primary: #00796B;
+    --primary-dark: #00564B;
+    --green: #2E7D32;
+    --red: #C62828;
+    --bg: #EEF3F2;
+    --card: #FFFFFF;
+    --text: #1B2A29;
+    --muted: #6B7B7A;
+    --radius: 14px;
+    --shadow: 0 2px 10px rgba(0,60,54,0.08);
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", "Tahoma", "Arial", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .app { max-width: 540px; margin: 0 auto; min-height: 100vh; position: relative; padding-bottom: 90px; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #fff;
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  }
+  header h1 { font-size: 18px; font-weight: 700; }
+  .head-actions { display: flex; gap: 4px; }
+  .head-actions button {
+    background: rgba(255,255,255,0.16); border: none; color: #fff;
+    width: 38px; height: 38px; border-radius: 10px; font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .head-actions button:hover { background: rgba(255,255,255,0.28); }
+  .back-btn { background: rgba(255,255,255,0.16) !important; border: none; color: #fff; width: 38px; height: 38px; border-radius: 10px; font-size: 18px; cursor: pointer; }
+
+  main { padding: 16px; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .stat {
+    background: var(--card); border-radius: var(--radius); padding: 12px 6px; text-align: center;
+    box-shadow: var(--shadow); border: 1.5px solid #E2EAE9;
+  }
+  .stat .num { font-size: 24px; font-weight: 800; }
+  .stat .lbl { font-size: 11.5px; color: var(--muted); }
+  .stat.teal .num { color: var(--primary); }
+  .stat.green .num { color: var(--green); }
+  .stat.red .num { color: var(--red); }
+
+  .search {
+    width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #D8E2E1;
+    background: var(--card); font-size: 15px; font-family: inherit; margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .search:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+  .sub-item {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 10px;
+    cursor: pointer; border: 1.5px solid #E2EAE9;
+  }
+  .sub-item:hover { border-color: var(--primary); }
+  .avatar {
+    width: 42px; height: 42px; border-radius: 50%; color: #fff; font-weight: 800; font-size: 18px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .avatar.paid { background: var(--green); }
+  .avatar.unpaid { background: var(--red); }
+  .sub-info { flex: 1; min-width: 0; }
+  .sub-name { font-weight: 700; font-size: 15.5px; }
+  .sub-meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .sub-status { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+  .sub-status.paid { color: var(--green); background: #E8F5E9; }
+  .sub-status.unpaid { color: var(--red); background: #FDECEA; }
+
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .empty .big { font-size: 44px; margin-bottom: 10px; }
+
+  .fab {
+    position: fixed; bottom: 22px; left: max(16px, calc(50% - 250px));
+    background: var(--primary); color: #fff; border: none; border-radius: 16px;
+    padding: 15px 20px; font-size: 15px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 18px rgba(0,121,107,0.4);
+  }
+  .fab:hover { background: var(--primary-dark); }
+
+  .info-card {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 16px; margin-bottom: 14px; border: 1.5px solid #E2EAE9;
+  }
+  .info-top { display: flex; align-items: center; gap: 12px; }
+  .info-name { font-size: 19px; font-weight: 800; }
+  .info-phone { color: var(--muted); font-size: 14px; }
+  .chip {
+    margin-inline-start: auto; background: #E0F2F1; color: var(--primary-dark);
+    font-size: 12.5px; font-weight: 700; padding: 5px 12px; border-radius: 20px; white-space: nowrap;
+  }
+  .notes { margin-top: 12px; padding-top: 12px; border-top: 1px solid #EDF1F0; color: var(--text); font-size: 14px; }
+  .notes .lbl { font-weight: 700; margin-bottom: 4px; }
+
+  .year-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0 14px; }
+  .year-nav {
+    width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--primary); color: #fff; font-size: 20px;
+  }
+  .year-nav:hover { background: var(--primary-dark); }
+  .year-box {
+    background: #E0F2F1; color: var(--primary-dark); font-size: 20px; font-weight: 800;
+    padding: 8px 26px; border-radius: 12px; min-width: 110px; text-align: center;
+  }
+
+  .section-title { font-weight: 800; font-size: 15px; margin-bottom: 10px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .month-cell {
+    background: var(--card); border-radius: 12px; border: 1.5px solid #E2EAE9;
+    padding: 10px 6px; text-align: center; cursor: pointer; font-family: inherit;
+    box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .month-cell .m-name { font-weight: 700; font-size: 13px; }
+  .month-cell .m-icon { font-size: 22px; line-height: 1; }
+  .month-cell .m-status { font-size: 11px; font-weight: 700; }
+  .month-cell .m-fee { font-size: 10.5px; color: var(--muted); }
+  .month-cell.paid { background: #E8F5E9; border-color: #A5D6A7; }
+  .month-cell.paid .m-icon { color: var(--green); }
+  .month-cell.paid .m-status { color: var(--green); }
+  .month-cell.unpaid { background: #FDECEA; border-color: #EF9A9A; }
+  .month-cell.unpaid .m-icon { color: var(--red); }
+  .month-cell.unpaid .m-status { color: var(--red); }
+
+  .summary {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 16px; margin-top: 16px; border: 1.5px solid #E2EAE9;
+  }
+  .sum-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .sum-row .lbl { flex: 1; color: var(--text); }
+  .sum-row .val { font-weight: 800; }
+  .sum-row .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .divider { height: 1px; background: #EDF1F0; margin: 6px 0; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 20;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal {
+    background: #fff; border-radius: 16px; width: 100%; max-width: 480px;
+    padding: 20px; max-height: 90vh; overflow-y: auto;
+  }
+  .modal h2 { font-size: 17px; margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 5px; color: var(--muted); }
+  .field input, .field textarea {
+    width: 100%; padding: 11px 12px; border-radius: 10px; border: 1.5px solid #D8E2E1;
+    font-size: 15px; font-family: inherit;
+  }
+  .field input:focus, .field textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 6px; }
+  .btn {
+    flex: 1; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;
+    border: none; font-family: inherit;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-ghost { background: #EEF1F1; color: var(--text); }
+
+  #toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #26302F; color: #fff; padding: 12px 22px; border-radius: 12px; font-size: 14px;
+    opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 30; max-width: 90%;
+    text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (min-width: 600px) {
+    .grid { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header id="header"></header>
+  <main id="main"></main>
+  <button class="fab" id="fab" onclick="openForm()">＋ <span>مشترك جديد</span></button>
+</div>
+
+<div class="modal-overlay" id="formModal">
+  <div class="modal">
+    <h2 id="modalTitle">مشترك جديد</h2>
+    <div class="field">
+      <label>اسم المشترك *</label>
+      <input id="fName" placeholder="مثال: أحمد محمد">
+    </div>
+    <div class="field">
+      <label>رقم الهاتف</label>
+      <input id="fPhone" type="tel" placeholder="مثال: 0770xxxxxxx" dir="ltr" style="text-align:left">
+    </div>
+    <div class="field">
+      <label>الاشتراك الشهري (اختياري)</label>
+      <input id="fFee" type="text" inputmode="decimal" placeholder="مثال: 15000">
+    </div>
+    <div class="field">
+      <label>ملاحظات</label>
+      <textarea id="fNotes" rows="3" placeholder="أي ملاحظات عن المشترك"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveForm()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".csv,text/csv" style="display:none" onchange="onFileSelected(this)">
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+// ============ بيانات عامة ============
+const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const WEEKDAYS = ['','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت','الأحد'];
+const HEADER = 'name,phone,notes,monthly_fee,year,month,paid,paid_date';
+const LS_SUBS = 'tower_subscribers';
+const LS_PAYS = 'tower_payments';
+const LS_NEXT = 'tower_next_id';
+
+const state = {
+  view: 'home',
+  subscribers: [],
+  payments: {},
+  currentSubId: null,
+  currentYear: new Date().getFullYear(),
+  search: ''
+};
+
+let nextId = 1;
+
+// ============ أدوات ============
+function h(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function monthName(m){ return MONTHS[m-1]; }
+function weekdayName(w){ return WEEKDAYS[w]; }
+function isoDayLabel(iso){
+  if(!iso) return null;
+  const parts = iso.split('-');
+  const d = parseInt(parts[2]), m = parseInt(parts[1]);
+  if(isNaN(d) || isNaN(m)) return iso;
+  const dt = new Date(parts[0], m-1, d);
+  return pad(d) + ' - ' + WEEKDAYS[(dt.getDay()+6)%7+1];
+}
+function formatFullDate(dt){
+  return dt.getFullYear() + '/' + pad(dt.getMonth()+1) + '/' + pad(dt.getDate()) + ' - ' + WEEKDAYS[(dt.getDay()+6)%7+1];
+}
+
+// ============ الحفظ والتحميل ============
+function save(){
+  localStorage.setItem(LS_SUBS, JSON.stringify(state.subscribers));
+  localStorage.setItem(LS_PAYS, JSON.stringify(state.payments));
+  localStorage.setItem(LS_NEXT, String(nextId));
+}
+function load(){
+  try {
+    state.subscribers = JSON.parse(localStorage.getItem(LS_SUBS)) || [];
+    state.payments = JSON.parse(localStorage.getItem(LS_PAYS)) || {};
+    nextId = parseInt(localStorage.getItem(LS_NEXT)) || (state.subscribers.reduce((m,s)=>Math.max(m,s.id||0),0)+1);
+  } catch(e){ state.subscribers = []; state.payments = {}; nextId = 1; }
+}
+
+// ============ التنقل ============
+function goHome(){ state.view = 'home'; state.currentSubId = null; render(); }
+function openDetail(id){
+  if(!state.subscribers.find(s=>s.id===id)) return;
+  state.currentSubId = id; state.view = 'detail'; render();
+}
+function changeYear(d){ state.currentYear += d; render(); }
+
+// ============ الرسم ============
+function render(){
+  const header = document.getElementById('header');
+  const main = document.getElementById('main');
+  const fab = document.getElementById('fab');
+
+  if(state.view === 'home'){
+    header.innerHTML = `
+      <h1>مشتركو برج الإنترنت</h1>
+      <div class="head-actions">
+        <button title="تصدير CSV" onclick="exportCsv()">⇪</button>
+        <button title="استيراد CSV" onclick="document.getElementById('fileInput').click()">⇩</button>
+      </div>`;
+    main.innerHTML = renderHome();
+    fab.style.display = 'flex';
+  } else {
+    const s = state.subscribers.find(x=>x.id===state.currentSubId);
+    if(!s){ state.view='home'; render(); return; }
+    header.innerHTML = `
+      <button class="back-btn" onclick="goHome()">→</button>
+      <h1 style="font-size:16px; flex:1; margin:0 10px;">${h(s.name)}</h1>
+      <div class="head-actions">
+        <button title="تعديل" onclick="openForm(${s.id})">✎</button>
+        <button title="حذف" onclick="deleteSub(${s.id})">🗑</button>
+      </div>`;
+    main.innerHTML = renderDetail(s);
+    fab.style.display = 'none';
+  }
+}
+
+function renderHome(){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1;
+  let paid = 0;
+  state.subscribers.forEach(s=>{ if((state.payments[s.id]||{})[y]?.[m]?.paid) paid++; });
+  const total = state.subscribers.length;
+  const unpaid = total - paid;
+
+  let stats = `
+    <div class="stats">
+      <div class="stat teal"><div class="num">${total}</div><div class="lbl">إجمالي المشتركين</div></div>
+      <div class="stat green"><div class="num">${paid}</div><div class="lbl">مدفوع هذا الشهر</div></div>
+      <div class="stat red"><div class="num">${unpaid}</div><div class="lbl">غير مدفوع</div></div>
+    </div>`;
+
+  const list = state.subscribers.map(subItemHTML).join('');
+
+  return stats + `
+    <input class="search" type="text" placeholder="بحث بالاسم أو رقم الهاتف..." oninput="onSearch(this.value)">
+    <div id="list">
+      ${list || `<div class="empty"><div class="big">📡</div><div>لا يوجد مشتركون بعد<br>اضغط «مشترك جديد» للإضافة</div></div>`}
+    </div>`;
+}
+
+function subItemHTML(s){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1;
+  const paid = !!((state.payments[s.id]||{})[y]?.[m]?.paid);
+  return `
+    <div class="sub-item" data-search="${h((s.name+' '+s.phone).toLowerCase())}" onclick="openDetail(${s.id})">
+      <div class="avatar ${paid?'paid':'unpaid'}">${paid?'✓':'✗'}</div>
+      <div class="sub-info">
+        <div class="sub-name">${h(s.name)}</div>
+        <div class="sub-meta">${s.phone ? h(s.phone) : 'بدون رقم'} · ${monthName(m)} ${y}</div>
+      </div>
+      <div class="sub-status ${paid?'paid':'unpaid'}">${paid?'مدفوع':'غير مدفوع'}</div>
+    </div>`;
+}
+
+function onSearch(v){
+  const q = v.trim().toLowerCase();
+  document.querySelectorAll('.sub-item').forEach(el=>{
+    el.style.display = el.dataset.search.includes(q) ? '' : 'none';
+  });
+}
+
+function renderDetail(s){
+  const y = state.currentYear;
+  const ps = (state.payments[s.id]||{})[y]||{};
+  let paidCount = 0;
+  Object.keys(ps).forEach(k=>{ if(ps[k].paid) paidCount++; });
+  const fee = s.monthlyFee || 0;
+  const paidAmount = paidCount * fee;
+  const remaining = (12 - paidCount) * fee;
+
+  let cells = '';
+  for(let m=1; m<=12; m++){
+    const p = ps[m];
+    const paid = !!(p && p.paid);
+    const status = paid ? (isoDayLabel(p.date) || 'مدفوع') : 'غير مدفوع';
+    cells += `
+      <button class="month-cell ${paid?'paid':'unpaid'}" onclick="toggleMonth(${s.id},${y},${m})">
+        <div class="m-name">${monthName(m)}</div>
+        <div class="m-icon">${paid?'✓':'✗'}</div>
+        <div class="m-status">${h(status)}</div>
+        ${fee>0 ? `<div class="m-fee">${paid ? fee+' د' : ''}</div>` : ''}
+      </button>`;
+  }
+
+  return `
+    <div class="info-card">
+      <div class="info-top">
+        <div class="avatar ${paidCount>0?'paid':'unpaid'}">${h((s.name||'؟').charAt(0))}</div>
+        <div>
+          <div class="info-name">${h(s.name)}</div>
+          ${s.phone ? `<div class="info-phone">${h(s.phone)}</div>` : ''}
+        </div>
+        ${fee>0 ? `<div class="chip">${fee} د/شهر</div>` : ''}
+      </div>
+      ${s.notes ? `<div class="notes"><div class="lbl">ملاحظات:</div>${h(s.notes)}</div>` : ''}
+    </div>
+
+    <div class="year-row">
+      <button class="year-nav" onclick="changeYear(-1)">›</button>
+      <div class="year-box">${y}</div>
+      <button class="year-nav" onclick="changeYear(1)">‹</button>
+    </div>
+
+    <div class="section-title">حالة الدفع لسنة ${y}</div>
+    <div class="grid">${cells}</div>
+
+    <div class="summary">
+      <div class="section-title">ملخص سنة ${y}</div>
+      <div class="sum-row"><div class="dot" style="background:#2E7D32"></div><div class="lbl">الأشهر المدفوعة</div><div class="val">${paidCount} من 12</div></div>
+      <div class="divider"></div>
+      <div class="sum-row"><div class="dot" style="background:#00796B"></div><div class="lbl">إجمالي المدفوع</div><div class="val">${paidAmount.toFixed(2)} دينار</div></div>
+      <div class="divider"></div>
+      <div class="sum-row"><div class="dot" style="background:#C62828"></div><div class="lbl">المبلغ المتأخر</div><div class="val">${fee>0 ? remaining.toFixed(2)+' دينار' : '—'}</div></div>
+    </div>`;
+}
+
+// ============ الدفع ============
+function toggleMonth(subId, year, month){
+  const s = state.subscribers.find(x=>x.id===subId);
+  if(!s) return;
+  const cur = (state.payments[subId]||{})[year]?.[month];
+  const paid = !!(cur && cur.paid);
+
+  if(!paid){
+    const now = new Date();
+    let msg = 'سيتم تسجيل "' + s.name + '" كمدفوع بتاريخ:\n' + formatFullDate(now);
+    if(s.monthlyFee>0) msg += '\nالمبلغ: ' + s.monthlyFee + ' دينار';
+    if(!confirm('تأكيد دفع ' + monthName(month) + '\n\n' + msg)) return;
+    const iso = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate());
+    state.payments[subId] = state.payments[subId] || {};
+    state.payments[subId][year] = state.payments[subId][year] || {};
+    state.payments[subId][year][month] = { paid: true, date: iso };
+  } else {
+    if(!confirm('هل تريد إلغاء تسجيل الدفع لشهر ' + monthName(month) + '؟')) return;
+    state.payments[subId][year][month] = { paid: false, date: null };
+  }
+  save(); render();
+}
+
+// ============ نموذج المشترك ============
+function openForm(id){
+  const s = id !== undefined ? state.subscribers.find(x=>x.id===id) : null;
+  document.getElementById('modalTitle').textContent = s ? 'تعديل مشترك' : 'مشترك جديد';
+  document.getElementById('fName').value = s ? s.name : '';
+  document.getElementById('fPhone').value = s ? s.phone : '';
+  document.getElementById('fFee').value = (s && s.monthlyFee) ? s.monthlyFee : '';
+  document.getElementById('fNotes').value = s ? s.notes : '';
+  document.getElementById('formModal').dataset.id = s ? s.id : '';
+  document.getElementById('formModal').style.display = 'flex';
+}
+function closeModal(){ document.getElementById('formModal').style.display = 'none'; }
+
+function saveForm(){
+  const idRaw = document.getElementById('formModal').dataset.id;
+  const name = document.getElementById('fName').value.trim();
+  if(!name){ toast('أدخل اسم المشترك'); return; }
+  const phone = document.getElementById('fPhone').value.trim();
+  const fee = parseFloat(document.getElementById('fFee').value.trim().replace(',', '.')) || 0;
+  const notes = document.getElementById('fNotes').value.trim();
+
+  if(idRaw === ''){
+    state.subscribers.push({ id: nextId++, name, phone, notes, monthlyFee: fee });
+  } else {
+    const s = state.subscribers.find(x=>x.id === parseInt(idRaw));
+    if(s){ s.name = name; s.phone = phone; s.notes = notes; s.monthlyFee = fee; }
+  }
+  save(); closeModal(); render();
+}
+
+function deleteSub(id){
+  const s = state.subscribers.find(x=>x.id===id);
+  if(!s) return;
+  if(!confirm('هل أنت متأكد من حذف "' + s.name + '" وكل سجلات دفعاته؟')) return;
+  state.subscribers = state.subscribers.filter(x=>x.id!==id);
+  delete state.payments[id];
+  save(); goHome();
+}
+
+// ============ تصدير / استيراد CSV ============
+function esc(v){
+  v = String(v == null ? '' : v);
+  return (v.includes(',') || v.includes('"') || v.includes('\n')) ? '"' + v.replace(/"/g,'""') + '"' : v;
+}
+function parseLine(line){
+  const res = []; let buf = '', inQ = false;
+  for(let i=0; i<line.length; i++){
+    const c = line[i];
+    if(inQ){
+      if(c === '"'){ if(i+1<line.length && line[i+1]==='"'){ buf+='"'; i++; } else inQ = false; }
+      else buf += c;
+    } else {
+      if(c === '"') inQ = true;
+      else if(c === ','){ res.push(buf); buf = ''; }
+      else buf += c;
+    }
+  }
+  res.push(buf); return res;
+}
+
+function exportCsv(){
+  if(!state.subscribers.length){ toast('لا يوجد مشتركون للتصدير'); return; }
+  const lines = [HEADER];
+  state.subscribers.forEach(s=>{
+    const ps = state.payments[s.id] || {};
+    let rows = [];
+    Object.keys(ps).forEach(y=>{
+      Object.keys(ps[y]).forEach(m=>{
+        const p = ps[y][m];
+        rows.push([s.name, s.phone, s.notes, s.monthlyFee, y, m, p.paid?1:0, p.date||''].map(esc).join(','));
+      });
+    });
+    if(!rows.length) rows = [[s.name, s.phone, s.notes, s.monthlyFee, '', '', '', ''].map(esc).join(',')];
+    lines.push(...rows);
+  });
+  const blob = new Blob(["\uFEFF" + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'برج_الانترنت_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('تم تصدير البيانات');
+}
+
+function onFileSelected(input){
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let text = String(reader.result);
+    if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
+    if(!lines.length || lines[0].toLowerCase() !== HEADER.toLowerCase()){
+      toast('ملف غير صالح: الترويسة غير متطابقة'); return;
+    }
+    const subs = []; const pays = {}; const byKey = {};
+    for(let i=1; i<lines.length; i++){
+      const cols = parseLine(lines[i]);
+      if(cols.length < 4) continue;
+      const name = cols[0].trim();
+      if(!name) continue;
+      const phone = cols[1].trim();
+      const key = name + '\u0000' + phone;
+      let idx = byKey[key];
+      if(idx === undefined){
+        idx = subs.length;
+        byKey[key] = idx;
+        subs.push({ name, phone, notes: cols[2].trim(), monthlyFee: parseFloat(cols[3].trim()) || 0 });
+      }
+      if(cols.length >= 7){
+        const year = parseInt(cols[4].trim()), month = parseInt(cols[5].trim());
+        if(!isNaN(year) && !isNaN(month) && month>=1 && month<=12){
+          pays[idx] = pays[idx] || {};
+          pays[idx][year] = pays[idx][year] || {};
+          pays[idx][year][month] = { paid: parseInt(cols[6].trim()) === 1, date: (cols[7]||'').trim() || null };
+        }
+      }
+    }
+    if(!subs.length){ toast('الملف لا يحتوي على مشتركين'); return; }
+    if(!confirm('سيتم استبدال جميع البيانات الحالية بـ ' + subs.length + ' مشترك.\nهل تريد المتابعة؟')) return;
+    state.subscribers = subs;
+    state.payments = pays;
+    nextId = subs.length + 1;
+    save(); goHome();
+    toast('تم استيراد ' + subs.length + ' مشترك بنجاح');
+  };
+  reader.onerror = () => toast('تعذر قراءة الملف');
+  reader.readAsText(file);
+}
+
+// ============ تنبيه ============
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+// ============ تشغيل ============
+document.getElementById('formModal').addEventListener('click', e=>{
+  if(e.target.id === 'formModal') closeModal();
+});
+load();
+render();
+</script>
+</body>
+</html>
