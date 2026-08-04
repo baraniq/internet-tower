@@ -217,6 +217,10 @@
       <input id="fPhone" type="tel" placeholder="مثال: 0770xxxxxxx" dir="ltr" style="text-align:left">
     </div>
     <div class="field">
+      <label>تاريخ الاشتراك</label>
+      <input id="fSubDate" type="date">
+    </div>
+    <div class="field">
       <label>الاشتراك الشهري (اختياري)</label>
       <input id="fFee" type="text" inputmode="decimal" placeholder="مثال: 15000">
     </div>
@@ -260,7 +264,8 @@
 const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const MONTHS_LEVANT = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
 const WEEKDAYS = ['','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت','الأحد'];
-const HEADER = 'name,phone,notes,monthly_fee,year,month,paid,paid_date';
+const HEADER = 'name,phone,notes,monthly_fee,sub_date,year,month,paid,paid_date';
+const OLD_HEADER = 'name,phone,notes,monthly_fee,year,month,paid,paid_date';
 const LS_SUBS = 'tower_subscribers';
 const LS_PAYS = 'tower_payments';
 const LS_NEXT = 'tower_next_id';
@@ -295,6 +300,16 @@ function formatFullDate(dt){
   return dt.getFullYear() + '/' + pad(dt.getMonth()+1) + '/' + pad(dt.getDate()) + ' - ' + WEEKDAYS[(dt.getDay()+6)%7+1];
 }
 
+// عرض تاريخ كامل بصيغة سنة/شهر/يوم - يوم الأسبوع
+function fullIsoLabel(iso){
+  if(!iso) return null;
+  const parts = iso.split('-');
+  const d = parseInt(parts[2]), m = parseInt(parts[1]), y = parseInt(parts[0]);
+  if(isNaN(d) || isNaN(m) || isNaN(y)) return iso;
+  const dt = new Date(y, m-1, d);
+  return y + '/' + pad(m) + '/' + pad(d) + ' - ' + WEEKDAYS[(dt.getDay()+6)%7+1];
+}
+
 // تحويل رقم الهاتف إلى صيغة واتساب الدولية
 function whatsappNumber(phone){
   let n = String(phone || '').trim().replace(/[^\d+]/g, '').replace(/^\+/, '');
@@ -310,6 +325,14 @@ function waPaymentMessage(name, month, year, iso, fee){
   if(iso) text += '\nوذلك بتاريخ ' + isoDayLabel(iso);
   if(fee > 0) text += '\nالمبلغ: ' + fee + ' دينار';
   text += '\nشكراً لكم';
+  return text;
+}
+
+// نص رسالة إشعار بدء الاشتراك عبر واتساب
+function waSubscriptionMessage(name, subDate, fee){
+  let text = 'مرحباً ' + name + '،\nتم تفعيل اشتراكك في خدمة الإنترنت' + (subDate ? '\nتاريخ الاشتراك: ' + fullIsoLabel(subDate) : '');
+  if(fee > 0) text += '\nالاشتراك الشهري: ' + fee + ' دينار';
+  text += '\nشكراً لانضمامك';
   return text;
 }
 
@@ -470,6 +493,7 @@ function renderDetail(s){
         <div>
           <div class="info-name">${h(s.name)}</div>
           ${s.phone ? `<div class="info-phone">${h(s.phone)}</div>` : ''}
+          ${s.subDate ? `<div class="info-phone">تاريخ الاشتراك: ${h(fullIsoLabel(s.subDate))}</div>` : ''}
         </div>
         ${fee>0 ? `<div class="chip">${fee} د/شهر</div>` : ''}
       </div>
@@ -530,6 +554,7 @@ function openForm(id){
   document.getElementById('modalTitle').textContent = s ? 'تعديل مشترك' : 'مشترك جديد';
   document.getElementById('fName').value = s ? s.name : '';
   document.getElementById('fPhone').value = s ? s.phone : '';
+  document.getElementById('fSubDate').value = (s && s.subDate) ? s.subDate : '';
   document.getElementById('fFee').value = (s && s.monthlyFee) ? s.monthlyFee : '';
   document.getElementById('fNotes').value = s ? s.notes : '';
   document.getElementById('formModal').dataset.id = s ? s.id : '';
@@ -556,14 +581,22 @@ function saveForm(){
   const name = document.getElementById('fName').value.trim();
   if(!name){ toast('أدخل اسم المشترك'); return; }
   const phone = document.getElementById('fPhone').value.trim();
+  const subDate = document.getElementById('fSubDate').value;
   const fee = parseFloat(document.getElementById('fFee').value.trim().replace(',', '.')) || 0;
   const notes = document.getElementById('fNotes').value.trim();
 
   if(idRaw === ''){
-    state.subscribers.push({ id: nextId++, name, phone, notes, monthlyFee: fee });
+    const s = { id: nextId++, name, phone, notes, monthlyFee: fee, subDate: subDate || null };
+    state.subscribers.push(s);
+    const ph = whatsappNumber(phone);
+    if(ph){
+      waToast(name, 'https://wa.me/' + ph + '?text=' + encodeURIComponent(waSubscriptionMessage(name, subDate || null, fee)), 'تم إضافة المشترك بنجاح');
+    } else {
+      toast('تم إضافة المشترك');
+    }
   } else {
     const s = state.subscribers.find(x=>x.id === parseInt(idRaw));
-    if(s){ s.name = name; s.phone = phone; s.notes = notes; s.monthlyFee = fee; }
+    if(s){ s.name = name; s.phone = phone; s.notes = notes; s.monthlyFee = fee; s.subDate = subDate || null; }
   }
   save(); closeModal(); render();
 }
@@ -607,10 +640,10 @@ function exportCsv(){
     Object.keys(ps).forEach(y=>{
       Object.keys(ps[y]).forEach(m=>{
         const p = ps[y][m];
-        rows.push([s.name, s.phone, s.notes, s.monthlyFee, y, m, p.paid?1:0, p.date||''].map(esc).join(','));
+        rows.push([s.name, s.phone, s.notes, s.monthlyFee, s.subDate||'', y, m, p.paid?1:0, p.date||''].map(esc).join(','));
       });
     });
-    if(!rows.length) rows = [[s.name, s.phone, s.notes, s.monthlyFee, '', '', '', ''].map(esc).join(',')];
+    if(!rows.length) rows = [[s.name, s.phone, s.notes, s.monthlyFee, s.subDate||'', '', '', '', ''].map(esc).join(',')];
     lines.push(...rows);
   });
   const blob = new Blob(["\uFEFF" + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -631,9 +664,10 @@ function onFileSelected(input){
     let text = String(reader.result);
     if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
     const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
-    if(!lines.length || lines[0].toLowerCase() !== HEADER.toLowerCase()){
+    if(!lines.length || (lines[0].toLowerCase() !== HEADER.toLowerCase() && lines[0].toLowerCase() !== OLD_HEADER.toLowerCase())){
       toast('ملف غير صالح: الترويسة غير متطابقة'); return;
     }
+    const isNewFmt = lines[0].toLowerCase() === HEADER.toLowerCase();
     const subs = []; const pays = {}; const byKey = {};
     for(let i=1; i<lines.length; i++){
       const cols = parseLine(lines[i]);
@@ -646,14 +680,16 @@ function onFileSelected(input){
       if(idx === undefined){
         idx = subs.length;
         byKey[key] = idx;
-        subs.push({ name, phone, notes: cols[2].trim(), monthlyFee: parseFloat(cols[3].trim()) || 0 });
+        const subDate = isNewFmt ? (cols[4]||'').trim() : '';
+        subs.push({ name, phone, notes: cols[2].trim(), monthlyFee: parseFloat(cols[3].trim()) || 0, subDate: subDate || null });
       }
-      if(cols.length >= 7){
-        const year = parseInt(cols[4].trim()), month = parseInt(cols[5].trim());
+      const off = isNewFmt ? 5 : 4;
+      if(cols.length >= off+3){
+        const year = parseInt(cols[off].trim()), month = parseInt(cols[off+1].trim());
         if(!isNaN(year) && !isNaN(month) && month>=1 && month<=12){
           pays[idx] = pays[idx] || {};
           pays[idx][year] = pays[idx][year] || {};
-          pays[idx][year][month] = { paid: parseInt(cols[6].trim()) === 1, date: (cols[7]||'').trim() || null };
+          pays[idx][year][month] = { paid: parseInt(cols[off+2].trim()) === 1, date: (cols[off+3]||'').trim() || null };
         }
       }
     }
@@ -679,9 +715,9 @@ function toast(msg, extraHtml){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=>t.classList.remove('show'), extraHtml ? 20000 : 2600);
 }
-function waToast(name, url){
+function waToast(name, url, msg){
   pendingWa = url;
-  toast('تم تسجيل الدفع بنجاح', '<button class="wa-btn" onclick="sendWa()">إرسال إشعار واتساب إلى ' + h(name) + '</button>');
+  toast(msg || 'تمت العملية بنجاح', '<button class="wa-btn" onclick="sendWa()">إرسال إشعار واتساب إلى ' + h(name) + '</button>');
 }
 function sendWa(){
   if(pendingWa) window.open(pendingWa, '_blank');
